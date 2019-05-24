@@ -1,0 +1,851 @@
+LIST P=PIC18F4321    F=INHX32
+  #include <p18f4321.inc>
+  CONFIG  OSC=HS ; L?oscil.lador
+  CONFIG  PBADEN=DIG ; Volem que el PORTB sigui DIGital
+  CONFIG  WDT=OFF ; Desactivem el WatchDog Timer
+  CONFIG  LVP=OFF
+  ;CONFIG MCLRE = OFF
+  ORG 0x0000
+  GOTO    MAIN
+  ORG 0x0008
+  GOTO  RSI
+  ORG 0x0018
+  RETFIE  FAST
+
+  ORG 0x44
+    DB 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x012, 0x012, 0x012, 0x012, 0x012, 0x012, 0x012, 0x012, 0x012, 0x012, 0x012, 0x012, 0x012, 0x012, 0x012, 0x012, 0x012, 0x012, 0x012, 0x012, 0x012, 0x012 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x16, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28
+  ;ORG 0xEF
+  flag EQU 0x01
+  Contador EQU 0x02
+  espera1 EQU 0x03
+  espera2 EQU 0x04
+  posY EQU 0x05
+  posX EQU 0x06
+  posYaux EQU 0x07
+  posXaux EQU 0x08
+  contGrau EQU 0x09
+  topeHX EQU 0xA
+  topeLX EQU 0xB
+  topeHY EQU 0xC
+  topeLY EQU 0xD
+  miniEspera EQU 0xE
+  sumaY EQU 0xF
+  sumaX EQU 0x12
+  multiplicacion EQU 0x10
+  division EQU 0x11
+  valorLEDX EQU 0x13
+  valorLEDY  EQU 0x14
+  espera10s EQU 0x15
+  escriuX EQU 0x16
+  escriuY EQU 0x17
+
+
+
+  TEMPS_GRAU
+   DECF contGrau, 1, 0
+   BTFSS STATUS, Z, 0
+   GOTO TEMPS_GRAU
+   RETURN
+
+  TEMPS_1X
+   BSF LATC, 0, 0
+   MOVLW (.3)
+   MOVWF contGrau
+   CALL TEMPS_GRAU
+   INCF posXaux, 1, 0
+   MOVFF posX, WREG
+   SUBWF posXaux, 0 ,0  ;Comparamos el valor del W con el que se ha augmentado del pulsador
+   BTFSS STATUS, Z, 0
+   GOTO TEMPS_1X    
+   RETURN
+
+  TEMPS_1Y
+   BSF LATC, 1, 0
+   MOVLW (.3)
+   MOVWF contGrau
+   CALL TEMPS_GRAU
+   INCF posYaux, 1, 0
+   MOVFF posY, WREG
+   SUBWF posYaux, 0 ,0  ;Comparamos el valor del W con el que se ha augmentado del pulsador
+   BTFSS STATUS, Z, 0
+   GOTO TEMPS_1Y 
+   RETURN
+   
+  TEMPS_1
+   ;Tratamos el tiempo a 1 del PWM del servoX
+   
+   CLRF posXaux, 0
+   CALL TEMPS_1X
+   BCF LATC, 0, 0 ;ponemos a 0 la salida del PWM
+   ;Tratamos el tiempo a 1 del PWM del servoY
+
+   CLRF posYaux, 0
+   CALL TEMPS_1Y
+   BCF LATC, 1, 0 ;ponemos a 0 la salida del PWM
+   
+   RETURN
+
+
+
+  CONFIG_TIMER
+   MOVLW HIGH(.15535)
+   MOVWF TMR0H, 0
+   MOVLW LOW(.15535)
+   MOVWF TMR0L, 0
+   RETURN
+
+  CONFIG_INTERRUPT
+   BCF RCON, IPEN, 0
+   MOVLW b'11100000'
+   MOVWF INTCON, 0
+   MOVLW b'01110100' ;ACTIVAMOS PULL UPS Y FLANCO SUBIDA
+   MOVWF INTCON2, 0
+   MOVLW b'10001111'
+   MOVWF T0CON,0
+   RETURN
+
+  INIT_PORTS
+   MOVLW b'00001101'; BITS DE ADCON 1 CHANNEL 5
+   MOVWF ADCON1, 0
+   MOVLW b'11001111'
+   MOVWF TRISA, 0
+   MOVLW b'00111111'
+   MOVWF TRISB, 0
+   MOVLW b'10000000'
+   MOVWF TRISC, 0
+   MOVLW b'00000000'
+   MOVWF TRISD, 0
+   BCF TRISE, 0, 0
+   BCF TRISE, 1, 0
+   BCF TRISE, 2, 0
+   BSF TRISE, 3, 0
+   MOVLW (.44)
+   MOVWF posX, 0
+   MOVLW (.44)
+   MOVWF posY, 0
+   RETURN
+
+
+  CALCULAR_VALOR_LED_Y
+     ;****    CONFIGURAMOS EL VALOR DEL LED Y   *******
+   MOVFF posY, WREG
+   MOVFF WREG, TBLPTRL
+   MOVLW (.0)
+   MOVWF TBLPTRH
+   MOVLW (.0)
+   MOVWF TBLPTRU
+   TBLRD*
+   MOVFF TABLAT, valorLEDY
+   BSF LATE, 2, 0
+   MOVFF valorLEDY, WREG
+   BTFSC valorLEDY, 2, 0 
+   GOTO ENCIENDE_R
+   GOTO APAGA_R
+
+   ENCIENDE_R
+    BSF LATC, 2, 0
+    GOTO COMPRUEBA_G
+   APAGA_R
+    BCF LATC, 2, 0
+
+   COMPRUEBA_G
+    BTFSC valorLEDY, 3, 0 
+    GOTO ENCIENDE_G
+    GOTO APAGA_G
+
+   ENCIENDE_G
+    BSF LATC, 3, 0
+    GOTO COMPRUEBA_B
+   APAGA_G
+    BCF LATC, 3, 0
+
+   COMPRUEBA_B
+    BTFSC valorLEDY, 4, 0 
+    GOTO ENCIENDE_B
+    GOTO APAGA_B
+
+   ENCIENDE_B
+    BSF LATC, 4, 0
+    GOTO FIN_CALCULO_VALOR_Y
+   APAGA_B
+    BCF LATC, 4, 0
+   FIN_CALCULO_VALOR_Y
+   RETURN
+
+   CALCULAR_VALOR_LED_X
+  ;****    CONFIGURAMOS EL VALOR DEL LED X   *******
+   MOVFF posX, WREG
+   MOVFF WREG, TBLPTRL
+   MOVLW (.0)
+   MOVWF TBLPTRH
+   MOVLW (.0)
+   MOVWF TBLPTRU
+   TBLRD*
+   MOVFF TABLAT, valorLEDX
+   BCF LATE, 2, 0
+   MOVFF valorLEDX, WREG
+   BTFSC valorLEDX, 2, 0 
+   GOTO ENCIENDE_RX
+   GOTO APAGA_RX
+
+   ENCIENDE_RX
+    BSF LATC, 2, 0
+    GOTO COMPRUEBA_GX
+   APAGA_RX
+    BCF LATC, 2, 0
+
+   COMPRUEBA_GX
+    BTFSC valorLEDX, 3, 0 
+    GOTO ENCIENDE_GX
+    GOTO APAGA_GX
+
+   ENCIENDE_GX
+    BSF LATC, 3, 0
+    GOTO COMPRUEBA_BX
+   APAGA_GX
+    BCF LATC, 3, 0
+
+   COMPRUEBA_BX
+    BTFSC valorLEDX, 4, 0 
+    GOTO ENCIENDE_BX
+    GOTO APAGA_BX
+
+   ENCIENDE_BX
+    BSF LATC, 4, 0
+    GOTO FIN_CALCULO_VALOR_X
+   APAGA_BX
+    BCF LATC, 4, 0
+   FIN_CALCULO_VALOR_X
+   RETURN
+   ;**************************************************
+
+  ESPERA_AUX
+   DECF espera2, 1, 0
+   BTFSS STATUS, Z, 0
+   GOTO ESPERA_AUX
+   RETURN
+
+  ESPERA_20MS
+   MOVLW (.250)
+   MOVWF espera2, 0
+   CALL ESPERA_AUX
+   DECF espera1, 1, 0
+   BTFSS STATUS, Z, 0
+   GOTO ESPERA_20MS
+   RETURN
+
+  P_AMUNT
+   MOVLW (.50)
+   MOVWF espera1, 0
+   CALL ESPERA_20MS
+   INCF posY, 1, 0
+   MOVLW (.239)
+   MOVWF topeHY, 0
+   CPFSLT posY, 0
+   MOVFF topeHY, posY
+   CALL COLOR_LEDY
+   RETURN
+   
+  P_AVALL
+   MOVLW (.50)
+   MOVWF espera1, 0
+   CALL ESPERA_20MS
+   DECF posY, 1, 0
+   MOVLW (.44)
+   MOVWF topeLY, 0
+   CPFSGT posY, 0
+   MOVFF topeLY, posY
+   CALL COLOR_LEDY
+   RETURN
+
+  P_DRETA
+   MOVLW (.50)
+   MOVWF espera1, 0
+   CALL ESPERA_20MS
+   INCF posX, 1, 0
+   MOVLW (.239)
+   MOVWF topeHX, 0
+   CPFSLT posX, 0
+   MOVFF topeHX, posX
+   CALL COLOR_LEDX
+   RETURN
+
+  P_ESQUERRE
+   MOVLW (.50)
+   MOVWF espera1, 0
+   CALL ESPERA_20MS
+   DECF posX, 1, 0
+   MOVLW (.44)
+   MOVWF topeLX, 0
+   CPFSGT posX, 0
+   MOVFF topeLX, posX
+   CALL COLOR_LEDX
+   RETURN
+   
+  RSI
+   BCF INTCON, TMR0IF, 0
+   CALL CONFIG_TIMER
+   CALL TEMPS_1
+   RETFIE FAST
+
+  OPCIO_0
+
+   BTFSS PORTB, 5, 0
+   CALL P_AMUNT
+   BTFSS PORTB, 4, 0
+   CALL P_AVALL
+   BTFSS PORTB, 2, 0
+   CALL P_DRETA
+   BTFSS PORTB, 3, 0
+   CALL P_ESQUERRE 
+   BTFSC PIR1, RCIF, 0
+   GOTO COPIA_RECIBIDAS
+   GOTO FINISH
+   
+  COPIA_RECIBIDAS
+   MOVFF RCREG, posX
+   COPIA_RECIBIDAS2
+   BTFSS PIR1, RCIF, 0
+   GOTO COPIA_RECIBIDAS2
+   MOVFF RCREG, posY
+   
+  FINISH
+   RETURN
+
+   ESPERA_20micros
+     DECFSZ miniEspera, 1, 0
+     GOTO ESPERA_20micros
+     RETURN
+
+   ENCIENDE_7
+   BSF LATC, 2
+   BSF LATC, 3
+   BSF LATC, 4
+   RETURN
+
+   ENCIENDE_6
+   BCF LATC, 2
+   BSF LATC, 3
+   BSF LATC, 4
+   RETURN
+
+   ENCIENDE_5
+   BSF LATC, 2
+   BCF LATC, 3
+   BSF LATC, 4
+   RETURN
+
+   ENCIENDE_4
+   BCF LATC, 2
+   BCF LATC, 3
+   BSF LATC, 4
+   RETURN
+
+   ENCIENDE_3
+   BSF LATC, 2
+   BSF LATC, 3
+   BCF LATC, 4
+   RETURN
+
+   ENCIENDE_2
+   BCF LATC, 2
+   BSF LATC, 3
+   BCF LATC, 4
+   RETURN
+
+   ENCIENDE_1
+   BSF LATC, 2
+   BCF LATC, 3
+   BCF LATC, 4
+   RETURN
+
+   ENCIENDE_0
+   BCF LATC, 2
+   BCF LATC, 3
+   BCF LATC, 4
+   RETURN
+
+
+   COLOR_LEDY
+    BCF LATE, 2, 0
+    MOVLW(.68)
+    CPFSGT posY, 0
+    GOTO ENCIENDE_0
+    MOVLW(.92)
+    CPFSGT posY, 0
+    GOTO ENCIENDE_1
+    MOVLW(.116)
+    CPFSGT posY, 0
+    GOTO ENCIENDE_2
+    MOVLW(.140)
+    CPFSGT posY, 0
+    GOTO ENCIENDE_3
+    MOVLW(.164)
+    CPFSGT posY, 0
+    GOTO ENCIENDE_4
+    MOVLW(.188)
+    CPFSGT posY, 0
+    GOTO ENCIENDE_5
+    MOVLW(.212)
+    CPFSGT posY, 0
+    GOTO ENCIENDE_6
+    MOVLW(.240)
+    CPFSGT posY, 0
+    GOTO ENCIENDE_7
+    RETURN
+
+   COLOR_LEDX
+    BSF LATE, 2, 0
+    MOVLW(.68)
+    CPFSGT posX, 0
+    GOTO ENCIENDE_0
+    MOVLW(.92)
+    CPFSGT posX, 0
+    GOTO ENCIENDE_1
+    MOVLW(.116)
+    CPFSGT posX, 0
+    GOTO ENCIENDE_2
+    MOVLW(.140)
+    CPFSGT posX, 0
+    GOTO ENCIENDE_3
+    MOVLW(.164)
+    CPFSGT posX, 0
+    GOTO ENCIENDE_4
+    MOVLW(.188)
+    CPFSGT posX, 0
+    GOTO ENCIENDE_5
+    MOVLW(.212)
+    CPFSGT posX, 0
+    GOTO ENCIENDE_6
+    MOVLW(.240)
+    CPFSGT posX, 0
+    GOTO ENCIENDE_7
+    RETURN
+
+  OPCIO_1
+   BCF ADCON2, 7, 0
+   MOVLW b'00000111'; AN1
+   MOVWF ADCON0, 0
+   MOVLW (.17)
+   MOVWF miniEspera, 0  
+   CALL ESPERA_20micros ;para dar tiempo a convertir
+   CLRF sumaX
+   MOVFF ADRESH, WREG
+   MOVWF sumaX, 0
+   MOVLW(.211)
+   CPFSLT sumaX, 0
+   MOVFF WREG, sumaX
+   BCF ADCON0, 1, 0; Limpiamos Bit ADCON
+   MOVLW(.44)
+   ADDWF sumaX, 1
+   MOVLW(.239)
+   MULWF sumaX, 0
+   MOVFF PRODH, posX
+   CLRF PRODH, 0
+   BCF ADCON0, 1, 0
+   ;CALL ESPERA_20MS
+   MOVLW b'00000011'; AN0
+   MOVWF ADCON0, 0
+   MOVLW (.17)
+   MOVWF miniEspera, 0  
+   CALL ESPERA_20micros ;para dar tiempo a convertir
+   CLRF sumaY
+   MOVFF ADRESH, WREG
+   MOVWF sumaY, 0
+   MOVLW(.211)
+   CPFSLT sumaY, 0
+   MOVFF WREG, sumaY
+   ;BCF ADCON0, 1, 0; Limpiamos Bit ADCON
+   MOVLW(.44)
+   ADDWF sumaY, 1
+   MOVLW(.239)
+   MULWF sumaY, 0
+   MOVFF PRODH, posY
+   CLRF PRODH, 0
+
+   CALL COLOR_LEDY
+   CALL COLOR_LEDX
+
+   RETURN
+
+
+  ANGULO_X
+   BCF ADCON2, 7, 0
+   MOVLW b'00001011'; AN2
+   MOVWF ADCON0, 0
+   MOVLW (.17)
+   MOVWF miniEspera, 0  
+   CALL ESPERA_20micros ;para dar tiempo a convertir
+   CLRF sumaX
+   MOVFF ADRESH, WREG
+   MOVWF sumaX, 0
+   MOVLW(.211)
+   CPFSLT sumaX, 0
+   MOVFF WREG, sumaX
+   ;BCF ADCON0, 1, 0; Limpiamos Bit ADCON
+   MOVLW(.44)
+   ADDWF sumaX, 1
+   MOVLW(.239)
+   MULWF sumaX, 0
+   MOVFF PRODH, posX
+   CLRF PRODH, 0
+   BCF ADCON0, 1, 0
+   RETURN
+
+  ANGULO_Y
+   ;CALL ESPERA_20MS
+   MOVLW b'00001111'; AN3
+   MOVWF ADCON0, 0
+   MOVLW (.17)
+   MOVWF miniEspera, 0  
+   CALL ESPERA_20micros ;para dar tiempo a convertir
+   CLRF sumaY
+   MOVFF ADRESH, WREG
+   MOVWF sumaY, 0
+   MOVLW(.211)
+   CPFSLT sumaY, 0
+   MOVFF WREG, sumaY
+   ;BCF ADCON0, 1, 0; Limpiamos Bit ADCON
+   MOVLW(.44)
+   ADDWF sumaY, 1
+   MOVLW(.239)
+   MULWF sumaY, 0
+   MOVFF PRODH, posY
+   CLRF PRODH, 0
+   RETURN
+
+  JOY_X
+   BCF ADCON2, 7, 0
+   MOVLW b'00000111'; AN1
+   MOVWF ADCON0, 0
+   MOVLW (.17)
+   MOVWF miniEspera, 0  
+   CALL ESPERA_20micros ;para dar tiempo a convertir
+   CLRF sumaX
+   MOVFF ADRESH, WREG
+   MOVWF sumaX, 0
+   MOVLW(.211)
+   CPFSLT sumaX, 0
+   MOVFF WREG, sumaX
+   ;BCF ADCON0, 1, 0; Limpiamos Bit ADCON
+   MOVLW(.44)
+   ADDWF sumaX, 1
+   MOVLW(.239)
+   MULWF sumaX, 0
+   MOVFF PRODH, posX
+   CLRF PRODH, 0
+   BCF ADCON0, 1, 0
+   RETURN
+
+  JOY_Y
+   ;CALL ESPERA_20MS
+   MOVLW b'00000011'; AN0
+   MOVWF ADCON0, 0
+   MOVLW (.17)
+   MOVWF miniEspera, 0  
+   CALL ESPERA_20micros ;para dar tiempo a convertir
+   CLRF sumaY
+   MOVFF ADRESH, WREG
+   MOVWF sumaY, 0
+   MOVLW(.211)
+   CPFSLT sumaY, 0
+   MOVFF WREG, sumaY
+   ;BCF ADCON0, 1, 0; Limpiamos Bit ADCON
+   MOVLW(.44)
+   ADDWF sumaY, 1
+   MOVLW(.239)
+   MULWF sumaY, 0
+   MOVFF PRODH, posY
+   CLRF PRODH, 0
+   RETURN
+
+
+  ESCRIBIR_RAM_SERVO
+   CALL ANGULO_X
+   BCF LATA, 4, 0
+   BSF LATA, 5, 0 ; flanco counter
+   NOP
+   NOP
+   BCF LATA, 5, 0
+   BSF LATA, 5, 0
+   NOP
+   NOP
+   BCF LATA, 5, 0
+   BSF LATE, 1, 0
+   MOVFF posX, WREG
+   MOVWF LATD, 0
+   NOP
+   NOP
+   NOP
+   ;BSF LATA, 4, 0
+   CALL ANGULO_Y
+   BSF LATA, 5, 0
+   NOP
+   NOP
+   BCF LATA, 5, 0
+   BSF LATA, 5, 0 ; flanco counter
+   NOP
+   NOP
+   BCF LATA, 5, 0
+   BSF LATE, 1, 0
+   MOVFF posY, WREG
+   MOVWF LATD, 0
+   NOP
+   NOP
+   ;BCF LATA, 4, 0
+   RETURN
+
+  ESCRIBIR_RAM
+   CALL JOY_X
+   BCF LATA, 4, 0
+   BSF LATA, 5, 0 ; flanco counter
+   NOP
+   NOP
+   BCF LATA, 5, 0
+   BSF LATA, 5, 0
+   NOP
+   NOP
+   BCF LATA, 5, 0
+   BSF LATE, 1, 0
+   MOVFF posX, WREG
+   MOVWF LATD, 0
+   NOP
+   NOP
+   NOP
+   ;BSF LATA, 4, 0
+   CALL JOY_Y
+   BSF LATA, 5, 0
+   NOP
+   NOP
+   BCF LATA, 5, 0
+   BSF LATA, 5, 0 ; flanco counter
+   NOP
+   NOP
+   BCF LATA, 5, 0
+   BSF LATE, 1, 0
+   MOVFF posY, WREG
+   MOVWF LATD, 0
+   NOP
+   NOP
+   ;BCF LATA, 4, 0
+   RETURN
+
+
+ LEER_RAM
+  BSF LATA, 4, 0
+  MOVLW (.50)
+  MOVWF espera1, 0
+  CALL ESPERA_20MS
+  BSF LATA, 5, 0 ; flanco counter
+  NOP
+  NOP
+  BCF LATA, 5, 0
+  BSF LATA, 5, 0 ; flanco counter
+  NOP
+  NOP
+  BCF LATA, 5, 0
+  BCF LATE, 1, 0
+  MOVFF PORTD, WREG
+  MOVFF WREG, posX
+  BSF LATA, 5, 0 ; flanco counter
+  NOP
+  NOP
+  BCF LATA, 5, 0
+  BSF LATA, 5, 0 ; flanco counter
+  NOP
+  NOP
+  BCF LATA, 5, 0
+  ;BSF LATA, 4, 0
+  ;BCF LATE, 1, 0
+  MOVFF PORTD, WREG
+  MOVFF WREG, posY
+  RETURN
+
+  ESPERA_10S_ESCRITURA_SERVO
+   MOVLW (.50)
+   MOVWF espera1, 0
+   CALL ESPERA_20MS
+   ;*************ESCRIBIR EN LA RAM*************
+   BCF LATA, 4, 0
+   BSF LATE, 1, 0
+   CALL COLOR_LEDY
+   CALL COLOR_LEDX
+   CALL ESCRIBIR_RAM_SERVO
+   MOVLW (.50)
+   MOVWF espera1, 0
+   CALL ESPERA_20MS
+   DECF espera10s, 1, 0
+   BTFSS STATUS, Z, 0
+   GOTO ESPERA_10S_ESCRITURA_SERVO
+   RETURN
+
+
+  ESPERA_10S_ESCRITURA
+   MOVLW (.50)
+   MOVWF espera1, 0
+   CALL ESPERA_20MS
+   ;*************ESCRIBIR EN LA RAM*************
+   BCF LATA, 4, 0
+   BSF LATE, 1, 0
+   CALL COLOR_LEDY
+   CALL COLOR_LEDX
+   CALL ESCRIBIR_RAM
+   MOVLW (.50)
+   MOVWF espera1, 0
+   CALL ESPERA_20MS
+   DECF espera10s, 1, 0
+   BTFSS STATUS, Z, 0
+   GOTO ESPERA_10S_ESCRITURA
+   RETURN
+
+  ESPERA_10S_LECTURA
+   MOVLW (.50)
+   MOVWF espera1, 0
+   CALL ESPERA_20MS
+
+   ;*************LEER EN LA RAM*************
+   BSF LATA, 4, 0
+   BCF LATE, 1, 0
+   CALL COLOR_LEDY
+   CALL COLOR_LEDX
+   CALL LEER_RAM
+   MOVLW (.50)
+   MOVWF espera1, 0
+   CALL ESPERA_20MS
+   DECF espera10s, 1, 0
+   BTFSS STATUS, Z, 0
+   GOTO ESPERA_10S_LECTURA
+   RETURN
+
+  OPCIO_2
+   CLRF TRISD, 0
+   BCF LATC, 5, 0
+   NOP
+   NOP
+   BSF LATC, 5, 0
+   BSF LATE, 0, 0
+   MOVLW (.208)
+   MOVWF espera10s, 0
+   CALL ESPERA_10S_ESCRITURA
+   BCF LATE, 0, 0
+   ;LEEMOS LOS MOVIMIENTOS DE LA RAM
+   MOVLW (.65)
+   MOVWF espera10s, 0
+   SETF TRISD, 0 ; PONEMOS COMO INPUTS. 
+   BCF LATC, 5, 0
+   NOP
+   NOP
+   BSF LATC, 5, 0
+   MOVLW (.140)
+   MOVWF espera10s, 0
+   CALL ESPERA_10S_LECTURA
+   ;BCF LATE, 0, 0
+   RETURN
+
+  OPCIO_3
+   BCF T0CON, 7, 0
+   CLRF TRISD, 0
+   MOVLW b'00001011'
+   MOVWF ADCON1, 0
+   BCF LATC, 5, 0
+   NOP
+   NOP
+   BSF LATC, 5, 0
+   BSF LATE, 0, 0
+   MOVLW (.208)
+   MOVWF espera10s, 0
+   CALL ESPERA_10S_ESCRITURA_SERVO
+   BCF LATE, 0, 0
+   ;LEEMOS LOS MOVIMIENTOS DE LA RAM
+   MOVLW (.65)
+   MOVWF espera10s, 0
+   SETF TRISD, 0 ; PONEMOS COMO INPUTS. 
+   BCF LATC, 5, 0
+   NOP
+   NOP
+   BSF LATC, 5, 0
+   MOVLW (.140)
+   MOVWF espera10s, 0
+   BSF T0CON, 7, 0
+   CALL ESPERA_10S_LECTURA
+   RETURN
+  
+  CONFIG_TX
+    CLRF SPBRGH,0 
+    MOVLW (.64)
+    MOVWF SPBRG,0 
+    MOVLW 0x90
+    MOVWF RCSTA, 0
+    MOVLW b'00100110'
+    MOVWF TXSTA, 0
+    CLRF BAUDCON, 0
+    RETURN
+    
+    
+  CONFIG_RX
+    BSF RCSTA, CREN, 0
+    BCF PIE1, RCIE, 0
+    RETURN
+    
+  ESPERA_TX_X
+    ;MOVLW (.80)
+    ;MOVWF TXREG, 0
+    ;SIGUE_ESPERANDO
+    BTFSS TXSTA, TRMT, 0
+    GOTO ESPERA_TX_X
+    GOTO ENVIA_TX_X
+    RETURN
+    
+  ESPERA_TX_Y
+    BTFSS TXSTA, TRMT, 0
+    GOTO ESPERA_TX_Y
+    GOTO ENVIA_TX_Y
+    RETURN
+  
+  ENVIA_TX_X
+    MOVFF posX, TXREG    
+    RETURN
+    
+  ENVIA_TX_Y
+    MOVFF posY, TXREG
+    RETURN
+
+  
+   
+  RX_Y
+   BTFSS PIR1, RCIF, 0
+   GOTO OPCIO_0
+   MOVFF RCREG, posY
+   RETURN
+   
+  MIRAR_00_01
+   BTFSC PORTB, 1, 0
+   CALL OPCIO_0
+   AUX
+   BTFSS PORTB, 1, 0
+   CALL OPCIO_1
+   RETURN
+
+  MIRAR_10_11
+   BTFSC PORTB, 1, 0
+   CALL OPCIO_2
+   BTFSS PORTB, 1, 0
+   CALL OPCIO_3
+   RETURN
+
+  MAIN
+   CALL INIT_PORTS
+   CALL CONFIG_INTERRUPT
+   CALL CONFIG_TIMER
+   CALL CONFIG_TX
+   CALL CONFIG_RX
+
+
+  LOOP
+   BTFSC PORTB, 0, 0
+   CALL MIRAR_00_01
+   BTFSS PORTB, 0, 0
+   CALL MIRAR_10_11
+ 
+   GOTO LOOP
+   END
